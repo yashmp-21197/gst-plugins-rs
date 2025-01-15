@@ -3224,7 +3224,7 @@ impl FMP4Mux {
         state.stream_header = Some(buffer.clone());
 
         let variant = match variant {
-            super::Variant::ISO | super::Variant::DASH | super::Variant::ONVIF => "iso-fragmented",
+            super::Variant::ISO | super::Variant::DASH | super::Variant::CDASH | super::Variant::ONVIF => "iso-fragmented",
             super::Variant::CMAF => "cmaf",
         };
         let caps = gst::Caps::builder("video/quicktime")
@@ -4396,6 +4396,119 @@ impl AggregatorImpl for DASHMP4Mux {}
 
 impl FMP4MuxImpl for DASHMP4Mux {
     const VARIANT: super::Variant = super::Variant::DASH;
+}
+
+#[derive(Default)]
+pub(crate) struct CDASHMP4Mux;
+
+#[glib::object_subclass]
+impl ObjectSubclass for CDASHMP4Mux {
+    const NAME: &'static str = "GstCDASHMP4Mux";
+    type Type = super::CDASHMP4Mux;
+    type ParentType = super::FMP4Mux;
+}
+
+impl ObjectImpl for CDASHMP4Mux {}
+
+impl GstObjectImpl for CDASHMP4Mux {}
+
+impl ElementImpl for CDASHMP4Mux {
+    fn metadata() -> Option<&'static gst::subclass::ElementMetadata> {
+        static ELEMENT_METADATA: LazyLock<gst::subclass::ElementMetadata> = LazyLock::new(|| {
+            gst::subclass::ElementMetadata::new(
+                "CDASHMP4Mux",
+                "Codec/Muxer",
+                "Custom DASH fragmented MP4 muxer",
+                "Sebastian Dröge <sebastian@centricular.com>",
+            )
+        });
+
+        Some(&*ELEMENT_METADATA)
+    }
+
+    fn pad_templates() -> &'static [gst::PadTemplate] {
+        static PAD_TEMPLATES: LazyLock<Vec<gst::PadTemplate>> = LazyLock::new(|| {
+            let src_pad_template = gst::PadTemplate::new(
+                "src",
+                gst::PadDirection::Src,
+                gst::PadPresence::Always,
+                &gst::Caps::builder("video/quicktime")
+                    .field("variant", "iso-fragmented")
+                    .build(),
+            )
+            .unwrap();
+
+            let sink_pad_template = gst::PadTemplate::with_gtype(
+                "sink",
+                gst::PadDirection::Sink,
+                gst::PadPresence::Always,
+                &[
+                    gst::Structure::builder("video/x-h264")
+                        .field("stream-format", gst::List::new(["avc", "avc3"]))
+                        .field("alignment", "au")
+                        .field("width", gst::IntRange::<i32>::new(1, u16::MAX as i32))
+                        .field("height", gst::IntRange::<i32>::new(1, u16::MAX as i32))
+                        .build(),
+                    gst::Structure::builder("video/x-h265")
+                        .field("stream-format", gst::List::new(["hvc1", "hev1"]))
+                        .field("alignment", "au")
+                        .field("width", gst::IntRange::<i32>::new(1, u16::MAX as i32))
+                        .field("height", gst::IntRange::<i32>::new(1, u16::MAX as i32))
+                        .build(),
+                    gst::Structure::builder("video/x-vp8")
+                        .field("width", gst::IntRange::new(1, u16::MAX as i32))
+                        .field("height", gst::IntRange::new(1, u16::MAX as i32))
+                        .build(),
+                    gst::Structure::builder("video/x-vp9")
+                        .field("profile", gst::List::new(["0", "1", "2", "3"]))
+                        .field("chroma-format", gst::List::new(["4:2:0", "4:2:2", "4:4:4"]))
+                        .field("bit-depth-luma", gst::List::new([8u32, 10u32, 12u32]))
+                        .field("bit-depth-chroma", gst::List::new([8u32, 10u32, 12u32]))
+                        .field("width", gst::IntRange::new(1, u16::MAX as i32))
+                        .field("height", gst::IntRange::new(1, u16::MAX as i32))
+                        .build(),
+                    gst::Structure::builder("video/x-av1")
+                        .field("stream-format", "obu-stream")
+                        .field("alignment", "tu")
+                        .field("profile", gst::List::new(["main", "high", "professional"]))
+                        .field(
+                            "chroma-format",
+                            gst::List::new(["4:0:0", "4:2:0", "4:2:2", "4:4:4"]),
+                        )
+                        .field("bit-depth-luma", gst::List::new([8u32, 10u32, 12u32]))
+                        .field("bit-depth-chroma", gst::List::new([8u32, 10u32, 12u32]))
+                        .field("width", gst::IntRange::new(1, u16::MAX as i32))
+                        .field("height", gst::IntRange::new(1, u16::MAX as i32))
+                        .build(),
+                    gst::Structure::builder("audio/mpeg")
+                        .field("mpegversion", 4i32)
+                        .field("stream-format", "raw")
+                        .field("channels", gst::IntRange::<i32>::new(1, u16::MAX as i32))
+                        .field("rate", gst::IntRange::<i32>::new(1, i32::MAX))
+                        .build(),
+                    gst::Structure::builder("audio/x-opus")
+                        .field("channel-mapping-family", gst::IntRange::new(0i32, 255))
+                        .field("channels", gst::IntRange::new(1i32, 8))
+                        .field("rate", gst::IntRange::new(1, i32::MAX))
+                        .build(),
+                ]
+                .into_iter()
+                .collect::<gst::Caps>(),
+                super::FMP4MuxPad::static_type(),
+            )
+            .unwrap();
+
+            vec![src_pad_template, sink_pad_template]
+        });
+
+        PAD_TEMPLATES.as_ref()
+    }
+}
+
+impl AggregatorImpl for CDASHMP4Mux {}
+
+impl FMP4MuxImpl for CDASHMP4Mux {
+    const VARIANT: super::Variant = super::Variant::CDASH;
 }
 
 #[derive(Default)]

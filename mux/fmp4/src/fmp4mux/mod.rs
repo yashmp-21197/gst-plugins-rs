@@ -37,6 +37,10 @@ glib::wrapper! {
 }
 
 glib::wrapper! {
+    pub(crate) struct CDASHMP4Mux(ObjectSubclass<imp::CDASHMP4Mux>) @extends FMP4Mux, gst_base::Aggregator, gst::Element, gst::Object;
+}
+
+glib::wrapper! {
     pub(crate) struct ONVIFFMP4Mux(ObjectSubclass<imp::ONVIFFMP4Mux>) @extends FMP4Mux, gst_base::Aggregator, gst::Element, gst::Object;
 }
 
@@ -65,6 +69,12 @@ pub fn register(plugin: &gst::Plugin) -> Result<(), glib::BoolError> {
         "dashmp4mux",
         gst::Rank::PRIMARY,
         DASHMP4Mux::static_type(),
+    )?;
+    gst::Element::register(
+        Some(plugin),
+        "cdashmp4mux",
+        gst::Rank::PRIMARY,
+        CDASHMP4Mux::static_type(),
     )?;
     gst::Element::register(
         Some(plugin),
@@ -299,6 +309,7 @@ pub(crate) enum Variant {
     ISO,
     CMAF,
     DASH,
+    CDASH,
     ONVIF,
 }
 
@@ -306,7 +317,7 @@ impl Variant {
     pub(crate) fn is_single_stream(self) -> bool {
         match self {
             Variant::ISO | Variant::ONVIF => false,
-            Variant::CMAF | Variant::DASH => true,
+            Variant::CMAF | Variant::DASH | Variant::CDASH => true,
         }
     }
 }
