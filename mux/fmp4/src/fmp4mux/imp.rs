@@ -545,7 +545,7 @@ impl FMP4Mux {
     ) -> Result<Option<PreQueuedBuffer>, gst::FlowError> {
         // If not in ONVIF mode or the mapping is already known and there is a pre-queued buffer
         // then we can directly return it from here.
-        if self.obj().class().as_ref().variant != super::Variant::ONVIF
+        if (self.obj().class().as_ref().variant != super::Variant::CDASH && self.obj().class().as_ref().variant != super::Variant::ONVIF)
             || stream.running_time_utc_time_mapping.is_some()
         {
             if let Some(pre_queued_buffer) = stream.pre_queue.front() {
@@ -667,7 +667,7 @@ impl FMP4Mux {
             buffer.set_dts(dts_position);
         }
 
-        if self.obj().class().as_ref().variant != super::Variant::ONVIF {
+        if self.obj().class().as_ref().variant != super::Variant::CDASH && self.obj().class().as_ref().variant != super::Variant::ONVIF {
             // Store in the queue so we don't have to recalculate this all the time
             stream.pre_queue.push_back(PreQueuedBuffer {
                 buffer,
@@ -879,7 +879,7 @@ impl FMP4Mux {
         // or in ONVIF mode we must also know the mapping now.
 
         assert!(!stream.pre_queue.is_empty());
-        if self.obj().class().as_ref().variant == super::Variant::ONVIF {
+        if self.obj().class().as_ref().variant == super::Variant::CDASH || self.obj().class().as_ref().variant == super::Variant::ONVIF {
             assert!(stream.running_time_utc_time_mapping.is_some());
         }
 
@@ -2578,7 +2578,7 @@ impl FMP4Mux {
         // In case of ONVIF this needs to be converted back from UTC time to
         // the stream's running time
         let (fku_time, current_position) =
-            if self.obj().class().as_ref().variant == super::Variant::ONVIF {
+            if self.obj().class().as_ref().variant == super::Variant::CDASH || self.obj().class().as_ref().variant == super::Variant::ONVIF {
                 let Some(fku_time) =
                     utc_time_to_running_time(pts, stream.running_time_utc_time_mapping.unwrap())
                 else {
@@ -2688,7 +2688,7 @@ impl FMP4Mux {
         // instead of using the UTC time verbatim. This would be used for the tfdt box later.
         // FIXME: Should this use the original DTS-or-PTS running time instead?
         //        That might be negative though!
-        if self.obj().class().as_ref().variant == super::Variant::ONVIF || settings.offset_to_zero {
+        if self.obj().class().as_ref().variant == super::Variant::CDASH || self.obj().class().as_ref().variant == super::Variant::ONVIF || settings.offset_to_zero {
             let offset = if let Some(start_dts) = state.start_dts {
                 std::cmp::min(start_dts, state.earliest_pts.unwrap())
             } else {
