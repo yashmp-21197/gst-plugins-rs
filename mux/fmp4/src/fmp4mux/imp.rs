@@ -2688,7 +2688,7 @@ impl FMP4Mux {
         // instead of using the UTC time verbatim. This would be used for the tfdt box later.
         // FIXME: Should this use the original DTS-or-PTS running time instead?
         //        That might be negative though!
-        if self.obj().class().as_ref().variant == super::Variant::CDASH || self.obj().class().as_ref().variant == super::Variant::ONVIF || settings.offset_to_zero {
+        if self.obj().class().as_ref().variant == super::Variant::ONVIF || settings.offset_to_zero {
             let offset = if let Some(start_dts) = state.start_dts {
                 std::cmp::min(start_dts, state.earliest_pts.unwrap())
             } else {
